@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>疯狂三栋锦标赛S1赛季</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1512;
+    --bg2: #0a0f0d;
+    --card: #14201b;
+    --card2: #1a2a23;
+    --border: #2a3d34;
+    --text: #eef3f0;
+    --text-sub: #8aa398;
+    --accent: #d4af37;        /* 金色 - 扑克筹码/边框 */
+    --accent-soft: #f0d67a;
+    --felt: #14231b;          /* 赌桌绒面 */
+    --win: #ff5b6a;           /* 红=赢/涨 中国习惯（暗色下提亮） */
+    --lose: #34c98a;          /* 绿=输/跌（暗色下提亮） */
+    --shadow: 0 2px 6px rgba(0,0,0,.4), 0 12px 40px rgba(0,0,0,.45);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1c3327 0%, rgba(28,51,39,0) 60%),
+      radial-gradient(900px 500px at 100% 100%, #17251d 0%, rgba(23,37,29,0) 55%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 2px 22px; flex-wrap: wrap; gap: 12px;
+  }
+  .title { display: flex; align-items: center; gap: 12px; }
+  .title h1 {
+    font-size: 23px; font-weight: 800; letter-spacing: 1px;
+    background: linear-gradient(180deg, #f6e9b0, #d4af37 60%, #a67c1a);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    text-shadow: 0 1px 0 rgba(0,0,0,.3);
+  }
+  .title .logo {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, #1e3a2b, #0f1f17);
+    border: 1px solid var(--accent);
+    display: grid; place-items: center; font-size: 20px;
+    box-shadow: 0 0 14px rgba(212,175,55,.35), inset 0 0 8px rgba(0,0,0,.5);
+  }
+  .btn {
+    border: 1px solid var(--border); background: var(--card2); color: var(--text);
+    padding: 8px 16px; border-radius: 10px; cursor: pointer; font-size: 14px;
+    transition: .15s; font-weight: 600;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent-soft); }
+  .btn.primary {
+    background: linear-gradient(180deg, #e5c451, #c69a24); color: #201800; border-color: #e5c451;
+    box-shadow: 0 2px 10px rgba(212,175,55,.3);
+  }
+  .btn.primary:hover { background: linear-gradient(180deg, #f0d67a, #d4af37); color:#201800; }
+  .btn.danger { color: var(--win); border-color: #5a2a30; background:#241419;}
+  .btn.danger:hover { background: var(--win); color: #fff; border-color: var(--win); }
+  .btn.small { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+
+  .card {
+    background: linear-gradient(180deg, var(--card), var(--bg2));
+    border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px;
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .card::before {
+    content:''; position:absolute; inset:0; border-radius:var(--radius); pointer-events:none;
+    border:1px solid rgba(212,175,55,.12);
+  }
+  .card h2 { font-size: 16px; margin-bottom: 16px; display:flex; align-items:center; gap:9px; letter-spacing:.5px;}
+  .card h2 .bar { width: 4px; height: 16px; background: linear-gradient(180deg,#f0d67a,#c69a24); border-radius: 2px; box-shadow:0 0 8px rgba(212,175,55,.5);}
+
+  /* 榜单表格 */
+  .rank-table { width:100%; border-collapse:collapse; font-size:14px;}
+  .rank-table th, .rank-table td { padding:12px 10px; border-bottom:1px solid var(--border); text-align:center;}
+  .rank-table th { color:var(--accent); font-weight:700; background:rgba(212,175,55,.06); letter-spacing:.5px;}
+  .rank-table tbody tr:hover td { background:rgba(212,175,55,.05); }
+  .rank-table tr:last-child td { border-bottom:none;}
+  .rank-table td.name-cell { text-align:left;}
+  .rank-no { display:inline-grid; place-items:center; width:28px;height:28px;border-radius:50%; background:var(--card2); color:var(--text-sub); font-weight:800; font-size:13px; border:1px solid var(--border);}
+  .rank-no.top1{ background:linear-gradient(135deg,#f6e9b0,#d4af37); color:#3a2c00; border-color:#f0d67a; box-shadow:0 0 12px rgba(212,175,55,.5);}
+  .rank-no.top2{ background:linear-gradient(135deg,#e8edf2,#a9b4c0); color:#2b3038; border-color:#cfd6de;}
+  .rank-no.top3{ background:linear-gradient(135deg,#e6a56a,#c47a3d); color:#3a1e08; border-color:#e6a56a;}
+  .pdot { display:inline-block; width:11px;height:11px;border-radius:50%; margin-right:7px; vertical-align:middle; box-shadow:0 0 6px rgba(0,0,0,.5);}
+  .rate-cell{ display:flex; align-items:center; gap:8px; justify-content:center;}
+  .winrate-bar { height:6px; border-radius:4px; background:var(--bg2); overflow:hidden; width:64px; border:1px solid var(--border);}
+  .winrate-bar > i { display:block; height:100%; background:linear-gradient(90deg,#c69a24,#f0d67a); }
+  .val.pos{color:var(--win); font-weight:700;} .val.neg{color:var(--lose); font-weight:700;}
+
+  table.detail { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.detail th, table.detail td { padding: 10px 12px; text-align: center; border-bottom: 1px solid var(--border); }
+  table.detail th { color: var(--accent); font-weight: 700; background: rgba(212,175,55,.06); }
+  table.detail tbody tr:hover td { background:rgba(212,175,55,.04); }
+  table.detail td.pos { color: var(--win); font-weight:700;}
+  table.detail td.neg { color: var(--lose); font-weight:700;}
+  table.detail tr:last-child td { border-bottom: none; }
+
+  .empty { text-align:center; color:var(--text-sub); padding:40px 0; font-size:14px;}
+  .chart-box { position: relative; height: 380px; }
+
+  .mask { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(3px); display:none; align-items:center; justify-content:center; z-index:100; padding:16px;}
+  .mask.show { display:flex; }
+  .modal { background: linear-gradient(180deg,var(--card),var(--bg2)); border:1px solid var(--border); border-radius: 16px; width: 100%; max-width: 560px; max-height: 90vh; overflow:auto; box-shadow: 0 24px 70px rgba(0,0,0,.6);}
+  .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; background:var(--card); z-index:2;}
+  .modal-head h3 { font-size: 17px; color:var(--accent-soft);}
+  .modal-head .x { cursor:pointer; font-size:22px; color:var(--text-sub); line-height:1; border:none; background:none;}
+  .modal-body { padding: 22px; }
+  .field { margin-bottom: 16px; }
+  .field label { display:block; font-size:13px; color:var(--text-sub); margin-bottom:6px; font-weight:500;}
+  .field input[type=text], .field input[type=date], .field input[type=number], .field input[type=password] {
+    width: 100%; padding: 10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; outline:none; transition:.15s;
+    background:var(--bg2); color:var(--text);
+  }
+  .field input::placeholder{ color:#5f776b;}
+  .field input[type=date]{ color-scheme: dark; }
+  .field input:focus { border-color: var(--accent); box-shadow:0 0 0 3px rgba(212,175,55,.15);}
+  .modal-foot { padding: 16px 22px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; position:sticky; bottom:0; background:var(--card);}
+
+  .plist { display:flex; flex-direction:column; gap:8px; }
+  .prow { display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--border); border-radius:10px; background:var(--card2);}
+  .prow .dot { width:12px;height:12px;border-radius:50%; flex:none; box-shadow:0 0 6px rgba(0,0,0,.5);}
+  .prow .pn { flex:1; font-weight:600;}
+  .prow .icon { font-size:18px; width:26px; text-align:center;}
+
+  .score-input-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed var(--border);}
+  .score-input-row:last-child{border-bottom:none;}
+  .score-input-row .chk { width:18px; height:18px; accent-color:var(--accent);}
+  .score-input-row .nm { flex:1; }
+  .score-input-row input[type=number]{ width:110px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg2); color:var(--text);}
+  .score-input-row input:disabled{ background:#0a0f0d; color:#4a5a52;}
+
+  .rule-tag { display:inline-flex; align-items:center; gap:3px; font-size:11px; background:rgba(212,175,55,.14); color:var(--accent-soft); padding:1px 8px; border-radius:20px; margin-left:6px; border:1px solid rgba(212,175,55,.25);}
+  .rule-chip { display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border:1px solid var(--border); border-radius:20px; cursor:pointer; font-size:13px; user-select:none; transition:.15s; background:var(--card2); color:var(--text);}
+  .rule-chip.sel { border-color:var(--accent); background:rgba(212,175,55,.16); color:var(--accent-soft); }
+  .rule-chip input{ display:none;}
+  .rule-chips-wrap{ display:flex; flex-wrap:wrap; gap:8px;}
+
+  .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#1a2a23; color:var(--accent-soft); padding:10px 20px; border-radius:10px; font-size:14px; z-index:200; opacity:0; transition:.3s; pointer-events:none; border:1px solid var(--accent);}
+  .toast.show { opacity:1; }
+  .hint{ font-size:12px; color:var(--text-sub); margin-top:6px;}
+  .admin-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+  .admin-actions input[type=text]{ background:var(--bg2); color:var(--text);}
+  .tabs{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+  .tab{ padding:7px 14px; border-radius:8px; cursor:pointer; font-size:14px; color:var(--text-sub); background:var(--card2); border:1px solid var(--border);}
+  .tab.active{ background:linear-gradient(180deg,#e5c451,#c69a24); color:#201800; border-color:#e5c451; font-weight:700;}
+  .icon-picker{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .icon-opt{ width:36px;height:36px; display:grid; place-items:center; font-size:20px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:var(--card2);}
+  .icon-opt.sel{ border-color:var(--accent); background:rgba(212,175,55,.16);}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+<div class="wrap">
+  <header class="topbar">
+    <div class="title">
+      <div class="logo">🎯</div>
+      <h1>疯狂三栋锦标赛S1赛季</h1>
+    </div>
+    <div>
+      <button class="btn" id="btnRefresh">刷新</button>
+      <button class="btn primary" id="btnAdmin">进入后台</button>
+    </div>
+  </header>
+
+  <!-- 1. 总积分变化趋势（置顶） -->
+  <div class="card">
+    <h2><span class="bar"></span>总积分变化趋势</h2>
+    <div class="chart-box"><canvas id="trendChart"></canvas></div>
+    <div class="hint" id="ruleLegend"></div>
+  </div>
+
+  <!-- 2. 总输赢场次榜（按胜率降序，左侧排名） -->
+  <div class="card">
+    <h2><span class="bar"></span>总输赢场次榜（按胜率排名）</h2>
+    <div id="rankArea"></div>
+  </div>
+
+  <!-- 逐场明细 -->
+  <div class="card">
+    <h2><span class="bar"></span>逐场明细</h2>
+    <div id="detailArea"></div>
+  </div>
+</div>
+
+<!-- 后台登录 -->
+<div class="mask" id="loginMask">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head"><h3>后台登录</h3><button class="x" data-close>&times;</button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label>管理密码</label>
+        <input type="password" id="pwInput" placeholder="请输入管理密码" />
+        <div class="hint">默认密码：admin</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" data-close>取消</button>
+      <button class="btn primary" id="btnLogin">登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- 后台面板 -->
+<div class="mask" id="adminMask">
+  <div class="modal">
+    <div class="modal-head"><h3>后台管理</h3><button class="x" data-close>&times;</button></div>
+    <div class="modal-body">
+      <div class="tabs">
+        <div class="tab active" data-tab="games">录入 / 场次</div>
+        <div class="tab" data-tab="players">玩家管理</div>
+        <div class="tab" data-tab="rules">特殊模式</div>
+      </div>
+
+      <!-- 场次 -->
+      <div id="tab-games">
+        <div class="admin-actions">
+          <button class="btn primary" id="btnNewGame">+ 录入一场</button>
+        </div>
+        <div id="adminGameList"></div>
+      </div>
+
+      <!-- 玩家 -->
+      <div id="tab-players" style="display:none;">
+        <div class="admin-actions">
+          <input type="text" id="newPlayerName" placeholder="输入玩家名" style="flex:1; min-width:160px; padding:8px 12px; border:1px solid var(--border); border-radius:10px;" />
+          <button class="btn primary" id="btnAddPlayer">添加玩家</button>
+        </div>
+        <div class="plist" id="playerList"></div>
+      </div>
+
+      <!-- 特殊模式 -->
+      <div id="tab-rules" style="display:none;">
+        <div class="admin-actions" style="align-items:flex-start; flex-direction:column;">
+          <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
+            <input type="text" id="newRuleName" placeholder="模式名称，如：翻倍局" style="flex:1; min-width:150px; padding:8px 12px; border:1px solid var(--border); border-radius:10px;" />
+            <button class="btn primary" id="btnAddRule">添加模式</button>
+          </div>
+          <div style="font-size:13px;color:var(--text-sub);">选择图标：</div>
+          <div class="icon-picker" id="ruleIconPicker"></div>
+        </div>
+        <div class="plist" id="ruleList"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="btnClearAll">清空全部数据</button>
+      <button class="btn" data-close>关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 录入/编辑场次 -->
+<div class="mask" id="gameMask">
+  <div class="modal">
+    <div class="modal-head"><h3 id="gameModalTitle">录入一场</h3><button class="x" data-close>&times;</button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label>游戏日期</label>
+        <input type="date" id="gameDate" />
+      </div>
+      <div class="field">
+        <label>本场特殊模式（可多选，来自“特殊模式”库）</label>
+        <div class="rule-chips-wrap" id="gameRuleChips"></div>
+        <div class="hint" id="noRuleHint" style="display:none;">还没有特殊模式，可到“特殊模式”标签页添加。</div>
+      </div>
+      <div class="field">
+        <label>参与玩家及得分（勾选参与者并填分数，正数为赢、负数为输）</label>
+        <div id="scoreInputList"></div>
+        <div class="hint" id="sumHint">本场分数合计：0（建议一场总和为 0）</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" data-close>取消</button>
+      <button class="btn primary" id="btnSaveGame">保存本场</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   数据结构：
+   {
+     players:[{id,name,color}],
+     rules:[{id,name,icon}],               // 特殊模式库
+     games:[{id,date,ruleIds:[ruleId], scores:{playerId:score}}]
+   }
+   数据层可插拔：将来接云库只改 Store.load/save
+   ============================================================ */
+const PALETTE = ['#f0d67a','#ff6b78','#34c98a','#ff9e40','#a98bff','#38d0d0','#ff7ac0','#6fb3ff','#c0e05a','#e0a06a'];
+const ICON_CHOICES = ['🦑','⚡','🔥','💰','🎲','⭐','💣','🎯','👑','🃏','🀄','❄️','🍀','⚔️','🛡️','🎁','🚀'];
+
+/* —— 云端数据后端（jsonblob.com，匿名读写、CORS 开放、多人共享同一份）——
+   如需迁移到自己的库（Supabase 等），只需改 loadRemote / saveRemote 两个方法。 */
+const BLOB_ID = '019fbebd-db22-7752-a5b6-c899d2caa068';
+const BLOB_URL = 'https://jsonblob.com/api/jsonBlob/' + BLOB_ID;
+
+const Store = {
+  CACHE_KEY: 'game_scoreboard_cloud_cache',
+  data: { players: [], rules: [], games: [] },
+  _saving: false, _pending: false,
+  _normalize(){
+    this.data.players = this.data.players || [];
+    this.data.rules = this.data.rules || [];
+    this.data.games = this.data.games || [];
+  },
+  // 从云端拉取（失败则退回本地缓存）
+  async load() {
+    try {
+      const res = await fetch(BLOB_URL, { headers:{'Accept':'application/json'}, cache:'no-store' });
+      if(res.ok){
+        this.data = await res.json();
+        this._normalize();
+        try{ localStorage.setItem(this.CACHE_KEY, JSON.stringify(this.data)); }catch(e){}
+        return this.data;
+      }
+    } catch(e){ console.warn('云端读取失败，使用本地缓存', e); }
+    try { const raw=localStorage.getItem(this.CACHE_KEY); if(raw) this.data=JSON.parse(raw); } catch(e){}
+    this._normalize();
+    return this.data;
+  },
+  // 保存到云端（带简单串行队列，避免并发覆盖）
+  async save() {
+    try{ localStorage.setItem(this.CACHE_KEY, JSON.stringify(this.data)); }catch(e){}
+    if(this._saving){ this._pending=true; return; }
+    this._saving=true;
+    try{
+      const res = await fetch(BLOB_URL, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(this.data) });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+    }catch(e){
+      console.warn('云端保存失败', e);
+      if(typeof toast==='function') toast('⚠️ 云端保存失败，请检查网络后重试');
+    }finally{
+      this._saving=false;
+      if(this._pending){ this._pending=false; this.save(); }
+    }
+  },
+  // players
+  addPlayer(name){
+    name=(name||'').trim(); if(!name) return {ok:false,msg:'请输入玩家名'};
+    if(this.data.players.some(p=>p.name===name)) return {ok:false,msg:'该玩家已存在'};
+    const used=this.data.players.map(p=>p.color);
+    const color=PALETTE.find(c=>!used.includes(c))||PALETTE[this.data.players.length%PALETTE.length];
+    this.data.players.push({id:'p'+Date.now()+Math.floor(Math.random()*1000),name,color}); this.save(); return {ok:true};
+  },
+  removePlayer(id){
+    this.data.players=this.data.players.filter(p=>p.id!==id);
+    this.data.games.forEach(g=>{ if(g.scores[id]!==undefined) delete g.scores[id]; }); this.save();
+  },
+  renamePlayer(id,name){
+    name=(name||'').trim(); if(!name) return {ok:false,msg:'请输入玩家名'};
+    if(this.data.players.some(p=>p.name===name && p.id!==id)) return {ok:false,msg:'该玩家名已存在'};
+    const p=this.data.players.find(p=>p.id===id); if(!p) return {ok:false,msg:'玩家不存在'};
+    p.name=name; this.save(); return {ok:true};
+  },
+  // rules
+  addRule(name,icon){
+    name=(name||'').trim(); if(!name) return {ok:false,msg:'请输入模式名称'};
+    if(this.data.rules.some(r=>r.name===name)) return {ok:false,msg:'该模式已存在'};
+    this.data.rules.push({id:'r'+Date.now()+Math.floor(Math.random()*1000),name,icon:icon||'⚡'}); this.save(); return {ok:true};
+  },
+  removeRule(id){
+    this.data.rules=this.data.rules.filter(r=>r.id!==id);
+    this.data.games.forEach(g=>{ if(g.ruleIds) g.ruleIds=g.ruleIds.filter(rid=>rid!==id); }); this.save();
+  },
+  ruleById(id){ return this.data.rules.find(r=>r.id===id); },
+  // games
+  addGame(g){ g.id='g'+Date.now()+Math.floor(Math.random()*1000); this.data.games.push(g); this.save(); return g.id; },
+  updateGame(id,g){ const i=this.data.games.findIndex(x=>x.id===id); if(i>=0){ g.id=id; this.data.games[i]=g; this.save(); } },
+  removeGame(id){ this.data.games=this.data.games.filter(g=>g.id!==id); this.save(); },
+  clearAll(){ this.data={players:[],rules:[],games:[]}; this.save(); },
+  sortedGames(){ return [...this.data.games].sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:(a.id<b.id?-1:1)); }
+};
+
+/* ============================= 计算 ============================= */
+function computeStats(){
+  const players=Store.data.players, games=Store.sortedGames();
+  const stat={}; players.forEach(p=> stat[p.id]={total:0,win:0,lose:0,draw:0,plays:0});
+  games.forEach(g=> Object.keys(g.scores).forEach(pid=>{
+    if(!stat[pid]) return; const s=Number(g.scores[pid]);
+    stat[pid].total+=s; stat[pid].plays++;
+    if(s>0)stat[pid].win++; else if(s<0)stat[pid].lose++; else stat[pid].draw++;
+  }));
+  return {players,games,stat};
+}
+
+/* ============================= 榜单（按胜率降序，带排名） ============================= */
+function renderRank(){
+  const {players,stat}=computeStats();
+  const area=document.getElementById('rankArea');
+  if(players.length===0){ area.innerHTML='<div class="empty">还没有玩家，进入后台添加玩家并录入比赛吧 🎮</div>'; return; }
+  const arr=players.map(p=>{ const st=stat[p.id]; const rate=st.plays>0?st.win/st.plays:0; return {p,...st,rate}; })
+    .sort((a,b)=> b.rate-a.rate || b.total-a.total );
+  let html='<div style="overflow-x:auto;"><table class="rank-table"><thead><tr><th style="width:60px;">排名</th><th style="text-align:left;">玩家</th><th>参与场数</th><th>胜</th><th>负</th><th>胜率</th><th>总积分</th></tr></thead><tbody>';
+  arr.forEach((it,idx)=>{
+    const rank=idx+1; const ratePct=Math.round(it.rate*100);
+    const rkCls=rank===1?'top1':rank===2?'top2':rank===3?'top3':'';
+    const scoreCls=it.total>0?'pos':it.total<0?'neg':''; const sign=it.total>0?'+':'';
+    html+=`<tr>
+      <td><span class="rank-no ${rkCls}">${rank}</span></td>
+      <td class="name-cell"><span class="pdot" style="background:${it.p.color}"></span><b>${escapeHtml(it.p.name)}</b></td>
+      <td>${it.plays}</td>
+      <td style="color:var(--win);font-weight:600;">${it.win}</td>
+      <td style="color:var(--lose);font-weight:600;">${it.lose}</td>
+      <td><span class="rate-cell"><span>${ratePct}%</span><span class="winrate-bar"><i style="width:${ratePct}%"></i></span></span></td>
+      <td class="val ${scoreCls}">${sign}${it.total}</td>
+    </tr>`;
+  });
+  html+='</tbody></table></div>';
+  area.innerHTML=html;
+}
+
+/* ============================= 趋势图 ============================= */
+let chart=null;
+function ruleIconsOf(g){ return (g.ruleIds||[]).map(id=>{ const r=Store.ruleById(id); return r?r.icon:''; }).join(''); }
+function ruleNamesOf(g){ return (g.ruleIds||[]).map(id=>{ const r=Store.ruleById(id); return r?`${r.icon} ${r.name}`:''; }).filter(Boolean).join('，'); }
+
+function renderChart(){
+  const {players,games}=computeStats();
+  const ctx=document.getElementById('trendChart');
+  const legend=document.getElementById('ruleLegend');
+  if(players.length===0||games.length===0){
+    if(chart){chart.destroy();chart=null;}
+    ctx.parentElement.innerHTML='<div class="empty">暂无比赛数据，无法生成趋势图</div>'; legend.innerHTML=''; return;
+  }
+  const labels=['起点'].concat(games.map(g=>{ const ic=ruleIconsOf(g); return ic? g.date+' '+ic : g.date; }));
+  const cumulative={}; players.forEach(p=>cumulative[p.id]=0);
+  const datasets=players.map(p=>{
+    const pts=[0]; games.forEach(g=>{ const s=g.scores[p.id]!==undefined?Number(g.scores[p.id]):0; cumulative[p.id]+=s; pts.push(cumulative[p.id]); });
+    return {label:p.name,data:pts,borderColor:p.color,backgroundColor:p.color,tension:.3,borderWidth:2.5,pointRadius:4,pointHoverRadius:6,fill:false};
+  });
+  if(chart)chart.destroy();
+  chart=new Chart(ctx,{ type:'line', data:{labels,datasets},
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',labels:{usePointStyle:true,boxWidth:8,font:{size:13},color:'#eef3f0'}},
+        tooltip:{
+          backgroundColor:'#0a0f0d', borderColor:'#2a3d34', borderWidth:1, titleColor:'#f0d67a', bodyColor:'#eef3f0',
+          callbacks:{
+          title:(items)=>{ const i=items[0].dataIndex; if(i===0) return '起点（0 分）'; const g=games[i-1]; const rn=ruleNamesOf(g); return rn? `${g.date}　${rn}` : g.date; },
+          label:(item)=>` ${item.dataset.label}：累计 ${item.raw} 分`
+        }}
+      },
+      scales:{
+        x:{grid:{color:'rgba(138,163,152,.12)'},ticks:{color:'#8aa398',maxRotation:0,autoSkip:true}},
+        y:{grid:{color:'rgba(138,163,152,.12)'},ticks:{color:'#8aa398'},title:{display:true,text:'累计总积分',color:'#8aa398'}}
+      }
+    }});
+  const rg=games.filter(g=>(g.ruleIds||[]).length);
+  legend.innerHTML= rg.length? ('本图标注：'+rg.map(g=>`<span class="rule-tag">${ruleIconsOf(g)} ${g.date}</span>`).join(' ')) : '';
+}
+
+/* ============================= 逐场明细 ============================= */
+function renderDetail(){
+  const {players,games}=computeStats();
+  const area=document.getElementById('detailArea');
+  if(games.length===0){ area.innerHTML='<div class="empty">暂无比赛记录</div>'; return; }
+  let html='<div style="overflow-x:auto;"><table class="detail"><thead><tr><th>日期 / 模式</th>';
+  players.forEach(p=> html+=`<th><span class="pdot" style="background:${p.color}"></span>${escapeHtml(p.name)}</th>`);
+  html+='</tr></thead><tbody>';
+  games.forEach(g=>{
+    const rn=ruleNamesOf(g);
+    html+=`<tr><td style="white-space:nowrap;text-align:left;">${g.date}${rn?`<span class="rule-tag">${escapeHtml(rn)}</span>`:''}</td>`;
+    players.forEach(p=>{
+      if(g.scores[p.id]===undefined){ html+='<td style="color:#4a5a52;">—</td>'; }
+      else { const s=Number(g.scores[p.id]); const cls=s>0?'pos':s<0?'neg':''; html+=`<td class="${cls}">${s>0?'+':''}${s}</td>`; }
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  area.innerHTML=html;
+}
+
+function renderAll(){ renderRank(); renderChart(); renderDetail(); }
+
+/* ============================= 后台 ============================= */
+const ADMIN_PW='admin';
+function openMask(id){ document.getElementById(id).classList.add('show'); }
+function closeMask(id){ document.getElementById(id).classList.remove('show'); }
+document.getElementById('btnAdmin').onclick=()=>openMask('loginMask');
+document.getElementById('btnRefresh').onclick=async ()=>{ toast('刷新中…'); await Store.load(); renderAll(); if(document.getElementById('adminMask').classList.contains('show')){ renderPlayerList(); renderRuleList(); renderAdminGameList(); } toast('已刷新'); };
+document.querySelectorAll('[data-close]').forEach(el=> el.onclick=e=> e.target.closest('.mask').classList.remove('show'));
+document.getElementById('btnLogin').onclick=()=>{ const pw=document.getElementById('pwInput').value; if(pw===ADMIN_PW){ closeMask('loginMask'); document.getElementById('pwInput').value=''; openAdmin(); } else toast('密码错误'); };
+document.getElementById('pwInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btnLogin').click(); });
+function openAdmin(){ openMask('adminMask'); Store.load().then(()=>{ renderPlayerList(); renderRuleList(); renderAdminGameList(); renderAll(); }); renderPlayerList(); renderRuleList(); renderAdminGameList(); renderIconPicker(); }
+
+document.querySelectorAll('.tab').forEach(t=> t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+  const k=t.dataset.tab;
+  document.getElementById('tab-games').style.display=k==='games'?'':'none';
+  document.getElementById('tab-players').style.display=k==='players'?'':'none';
+  document.getElementById('tab-rules').style.display=k==='rules'?'':'none';
+});
+
+// —— 玩家 ——
+function renderPlayerList(){
+  const list=document.getElementById('playerList');
+  if(Store.data.players.length===0){ list.innerHTML='<div class="empty">还没有玩家</div>'; return; }
+  list.innerHTML=Store.data.players.map(p=>`<div class="prow"><span class="dot" style="background:${p.color}"></span><span class="pn">${escapeHtml(p.name)}</span><button class="btn small" data-rename-player="${p.id}">改名</button><button class="btn danger small" data-del-player="${p.id}">删除</button></div>`).join('');
+  list.querySelectorAll('[data-rename-player]').forEach(b=> b.onclick=()=>{
+    const p=Store.data.players.find(x=>x.id===b.dataset.renamePlayer); if(!p) return;
+    const nv=prompt('修改玩家姓名：', p.name);
+    if(nv===null) return;
+    const r=Store.renamePlayer(p.id, nv);
+    if(r.ok){ renderPlayerList(); renderAdminGameList(); renderAll(); toast('已改名'); }
+    else toast(r.msg);
+  });
+  list.querySelectorAll('[data-del-player]').forEach(b=> b.onclick=()=>{ if(confirm('删除该玩家？其历史得分记录也会一并移除。')){ Store.removePlayer(b.dataset.delPlayer); renderPlayerList(); renderAdminGameList(); renderAll(); toast('已删除玩家'); }});
+}
+document.getElementById('btnAddPlayer').onclick=()=>{ const inp=document.getElementById('newPlayerName'); const r=Store.addPlayer(inp.value); if(r.ok){inp.value=''; renderPlayerList(); renderAll(); toast('已添加');} else toast(r.msg); };
+document.getElementById('newPlayerName').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btnAddPlayer').click(); });
+
+// —— 特殊模式 ——
+let selectedIcon=ICON_CHOICES[0];
+function renderIconPicker(){
+  const wrap=document.getElementById('ruleIconPicker');
+  wrap.innerHTML=ICON_CHOICES.map(ic=>`<div class="icon-opt ${ic===selectedIcon?'sel':''}" data-icon="${ic}">${ic}</div>`).join('');
+  wrap.querySelectorAll('[data-icon]').forEach(el=> el.onclick=()=>{ selectedIcon=el.dataset.icon; renderIconPicker(); });
+}
+function renderRuleList(){
+  const list=document.getElementById('ruleList');
+  if(Store.data.rules.length===0){ list.innerHTML='<div class="empty">还没有特殊模式</div>'; return; }
+  list.innerHTML=Store.data.rules.map(r=>`<div class="prow"><span class="icon">${r.icon}</span><span class="pn">${escapeHtml(r.name)}</span><button class="btn danger small" data-del-rule="${r.id}">删除</button></div>`).join('');
+  list.querySelectorAll('[data-del-rule]').forEach(b=> b.onclick=()=>{ if(confirm('删除该特殊模式？已录入场次中的该模式标记也会移除。')){ Store.removeRule(b.dataset.delRule); renderRuleList(); renderAdminGameList(); renderAll(); toast('已删除模式'); }});
+}
+document.getElementById('btnAddRule').onclick=()=>{ const inp=document.getElementById('newRuleName'); const r=Store.addRule(inp.value,selectedIcon); if(r.ok){inp.value=''; renderRuleList(); renderAll(); toast('已添加模式');} else toast(r.msg); };
+document.getElementById('newRuleName').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btnAddRule').click(); });
+
+// —— 场次列表 ——
+function renderAdminGameList(){
+  const box=document.getElementById('adminGameList');
+  const games=Store.sortedGames();
+  if(games.length===0){ box.innerHTML='<div class="empty">还没有比赛记录，点上方“录入一场”</div>'; return; }
+  box.innerHTML=games.map(g=>{
+    const parts=Store.data.players.filter(p=>g.scores[p.id]!==undefined).map(p=>`${escapeHtml(p.name)} ${Number(g.scores[p.id])>0?'+':''}${g.scores[p.id]}`).join('，');
+    const rn=ruleNamesOf(g);
+    return `<div class="prow" style="align-items:flex-start;flex-direction:column;gap:6px;">
+      <div style="display:flex;width:100%;align-items:center;gap:8px;">
+        <b>${g.date}</b>${rn?`<span class="rule-tag">${escapeHtml(rn)}</span>`:''}
+        <span style="flex:1;"></span>
+        <button class="btn small" data-edit-game="${g.id}">编辑</button>
+        <button class="btn danger small" data-del-game="${g.id}">删除</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-sub);">${parts||'（无参与者）'}</div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-del-game]').forEach(b=> b.onclick=()=>{ if(confirm('删除这场记录？')){ Store.removeGame(b.dataset.delGame); renderAdminGameList(); renderAll(); toast('已删除'); }});
+  box.querySelectorAll('[data-edit-game]').forEach(b=> b.onclick=()=> openGameModal(b.dataset.editGame));
+}
+
+// —— 录入/编辑 场次 ——
+let editingGameId=null;
+function openGameModal(id){
+  editingGameId=id||null;
+  const g=id?Store.data.games.find(x=>x.id===id):null;
+  document.getElementById('gameModalTitle').textContent=id?'编辑场次':'录入一场';
+  document.getElementById('gameDate').value=g?g.date:new Date().toISOString().slice(0,10);
+  // 特殊模式多选 chips
+  const chipsWrap=document.getElementById('gameRuleChips');
+  const noHint=document.getElementById('noRuleHint');
+  if(Store.data.rules.length===0){ chipsWrap.innerHTML=''; noHint.style.display=''; }
+  else {
+    noHint.style.display='none';
+    const sel=new Set(g?(g.ruleIds||[]):[]);
+    chipsWrap.innerHTML=Store.data.rules.map(r=>`<label class="rule-chip ${sel.has(r.id)?'sel':''}" data-rule-chip="${r.id}"><input type="checkbox" ${sel.has(r.id)?'checked':''}/> ${r.icon} ${escapeHtml(r.name)}</label>`).join('');
+    chipsWrap.querySelectorAll('[data-rule-chip]').forEach(lb=>{
+      const cb=lb.querySelector('input');
+      // label 原生已切换 checkbox，这里只需在其状态确定后同步高亮
+      cb.onchange=()=>{ lb.classList.toggle('sel',cb.checked); };
+    });
+  }
+  // 参与玩家 & 得分
+  const list=document.getElementById('scoreInputList');
+  if(Store.data.players.length===0){ list.innerHTML='<div class="empty">请先在“玩家管理”添加玩家</div>'; }
+  else {
+    list.innerHTML=Store.data.players.map(p=>{
+      const joined=g?(g.scores[p.id]!==undefined):true;
+      const val=g&&g.scores[p.id]!==undefined?g.scores[p.id]:'';
+      return `<div class="score-input-row">
+        <input type="checkbox" class="chk" data-chk="${p.id}" ${joined?'checked':''}/>
+        <span class="dot" style="width:11px;height:11px;border-radius:50%;background:${p.color};"></span>
+        <span class="nm">${escapeHtml(p.name)}</span>
+        <input type="number" data-score="${p.id}" placeholder="得分" value="${val}" ${joined?'':'disabled'}/>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('[data-chk]').forEach(chk=> chk.onchange=()=>{ const inp=list.querySelector(`[data-score="${chk.dataset.chk}"]`); inp.disabled=!chk.checked; if(!chk.checked)inp.value=''; updateSum(); });
+    list.querySelectorAll('[data-score]').forEach(inp=> inp.oninput=updateSum);
+  }
+  updateSum(); openMask('gameMask');
+}
+function updateSum(){ let sum=0; document.querySelectorAll('#scoreInputList [data-score]').forEach(inp=>{ if(!inp.disabled&&inp.value!=='')sum+=Number(inp.value); }); document.getElementById('sumHint').textContent=`本场分数合计：${sum}（建议一场总和为 0）`; }
+document.getElementById('btnNewGame').onclick=()=>openGameModal(null);
+document.getElementById('btnSaveGame').onclick=()=>{
+  const date=document.getElementById('gameDate').value; if(!date){toast('请选择日期');return;}
+  const ruleIds=[]; document.querySelectorAll('#gameRuleChips [data-rule-chip]').forEach(lb=>{ if(lb.querySelector('input').checked) ruleIds.push(lb.dataset.ruleChip); });
+  const scores={}; let any=false;
+  document.querySelectorAll('#scoreInputList [data-chk]').forEach(chk=>{ if(chk.checked){ const inp=document.querySelector(`#scoreInputList [data-score="${chk.dataset.chk}"]`); scores[chk.dataset.chk]=inp.value===''?0:Number(inp.value); any=true; } });
+  if(!any){toast('请至少勾选一名参与玩家');return;}
+  const payload={date,ruleIds,scores};
+  if(editingGameId)Store.updateGame(editingGameId,payload); else Store.addGame(payload);
+  closeMask('gameMask'); renderAdminGameList(); renderAll(); toast('已保存');
+};
+document.getElementById('btnClearAll').onclick=()=>{ if(confirm('确定清空全部玩家、模式和比赛数据？此操作不可恢复。')){ Store.clearAll(); renderPlayerList(); renderRuleList(); renderAdminGameList(); renderAll(); toast('已清空'); }};
+
+/* ============================= 工具 ============================= */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+let toastTimer=null;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1800); }
+
+/* ============================= 启动 ============================= */
+(async function init(){
+  document.getElementById('rankArea').innerHTML='<div class="empty">正在从云端加载数据…</div>';
+  await Store.load();
+  renderAll();
+})();
+</script>
+</body>
+</html>
