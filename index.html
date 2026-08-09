@@ -206,6 +206,11 @@
         <input type="password" id="pwInput" placeholder="请输入管理密码" />
         <div class="hint">默认密码：admin</div>
       </div>
+      <div class="field">
+        <label>GitHub 写入令牌（Token）</label>
+        <input type="password" id="tokenInput" placeholder="ghp_ 开头，用于保存数据到云端" />
+        <div class="hint" id="tokenHint">首次需粘贴一次，之后仅存本机浏览器，无需再填。访客无需填写。</div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn" data-close>取消</button>
@@ -302,28 +307,39 @@
 const PALETTE = ['#f0d67a','#ff6b78','#34c98a','#ff9e40','#a98bff','#38d0d0','#ff7ac0','#6fb3ff','#c0e05a','#e0a06a'];
 const ICON_CHOICES = ['🦑','⚡','🔥','💰','🎲','⭐','💣','🎯','👑','🃏','🀄','❄️','🍀','⚔️','🛡️','🎁','🚀'];
 
-/* —— 云端数据后端（jsonblob.com，匿名读写、CORS 开放、多人共享同一份）——
-   如需迁移到自己的库（Supabase 等），只需改 loadRemote / saveRemote 两个方法。 */
-const BLOB_ID = '019fbebd-db22-7752-a5b6-c899d2caa068';
-const BLOB_URL = 'https://jsonblob.com/api/jsonBlob/' + BLOB_ID;
+/* —— 云端数据后端（GitHub 仓库当数据库，永久不过期、多人共享同一份）——
+   读取：raw.githubusercontent公开匿名读，任何人可看
+   写入：GitHub Contents API PUT data.json，需管理员 token（登录后台时粘贴，仅存本机浏览器）
+   如需迁移到别的库，只需改 load / save 两个方法。 */
+const GH_OWNER = 'nirvana2593';
+const GH_REPO  = 'kuangsan-s1-scoreboard';
+const GH_BRANCH= 'main';
+const GH_FILE  = 'data.json';
+const RAW_URL  = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_FILE}`;
+const API_URL  = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+const TOKEN_KEY= 'gh_admin_token';
+function getToken(){ try{ return localStorage.getItem(TOKEN_KEY)||''; }catch(e){ return ''; } }
+function setToken(t){ try{ if(t) localStorage.setItem(TOKEN_KEY,t); else localStorage.removeItem(TOKEN_KEY); }catch(e){} }
 
 const Store = {
   CACHE_KEY: 'game_scoreboard_cloud_cache',
   data: { players: [], rules: [], games: [] },
+  _sha: null,          // data.json 当前的 git sha，更新时必须带上
   _saving: false, _pending: false,
   _normalize(){
     this.data.players = this.data.players || [];
     this.data.rules = this.data.rules || [];
     this.data.games = this.data.games || [];
   },
-  // 从云端拉取（失败则退回本地缓存）
+  // 从GitHub 公开 raw 拉取（失败则退回本地缓存）
   async load() {
     try {
-      const res = await fetch(BLOB_URL, { headers:{'Accept':'application/json'}, cache:'no-store' });
+      const res = await fetch(RAW_URL + '?t=' + Date.now(), { cache:'no-store' });
       if(res.ok){
         this.data = await res.json();
         this._normalize();
         try{ localStorage.setItem(this.CACHE_KEY, JSON.stringify(this.data)); }catch(e){}
+        await this._refreshSha();
         return this.data;
       }
     } catch(e){ console.warn('云端读取失败，使用本地缓存', e); }
@@ -331,17 +347,34 @@ const Store = {
     this._normalize();
     return this.data;
   },
-  // 保存到云端（带简单串行队列，避免并发覆盖）
+  // 取data.json 的最新 sha（需要token；无 token 或文件不存在则置空）
+  async _refreshSha(){
+    const token=getToken(); if(!token){ this._sha=null; return; }
+    try{
+      const res=await fetch(API_URL+'?ref='+GH_BRANCH+'&t='+Date.now(), { headers:{'Authorization':'token '+token,'Accept':'application/vnd.github+json'}, cache:'no-store' });
+      if(res.ok){ const j=await res.json(); this._sha=j.sha; }
+      else { this._sha=null; }
+    }catch(e){ this._sha=null; }
+  },
+  // 保存到 GitHub（需 token；带简单串行队列避免并发覆盖）
   async save() {
     try{ localStorage.setItem(this.CACHE_KEY, JSON.stringify(this.data)); }catch(e){}
+    const token=getToken();
+    if(!token){ if(typeof toast==='function') toast('⚠️ 未登录管理员，改动仅本机可见（请在后台粘贴 token）'); return; }
     if(this._saving){ this._pending=true; return; }
     this._saving=true;
     try{
-      const res = await fetch(BLOB_URL, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(this.data) });
-      if(!res.ok) throw new Error('HTTP '+res.status);
+      if(this._sha===null) await this._refreshSha();
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(this.data,null,2))));
+      const body = { message:'update data '+new Date().toISOString(), content, branch:GH_BRANCH };
+      if(this._sha) body.sha=this._sha;
+      const res = await fetch(API_URL, { method:'PUT', headers:{'Authorization':'token '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if(!res.ok){ const t=await res.text(); throw new Error('HTTP '+res.status+' '+t.slice(0,120)); }
+      const j=await res.json(); this._sha = j.content && j.content.sha ? j.content.sha : null;
     }catch(e){
       console.warn('云端保存失败', e);
-      if(typeof toast==='function') toast('⚠️ 云端保存失败，请检查网络后重试');
+      this._sha=null; // 让下次保存重新取 sha
+      if(typeof toast==='function') toast('⚠️ 保存到云端失败：'+(e.message||e));
     }finally{
       this._saving=false;
       if(this._pending){ this._pending=false; this.save(); }
@@ -489,10 +522,31 @@ function renderAll(){ renderRank(); renderChart(); renderDetail(); }
 const ADMIN_PW='admin';
 function openMask(id){ document.getElementById(id).classList.add('show'); }
 function closeMask(id){ document.getElementById(id).classList.remove('show'); }
-document.getElementById('btnAdmin').onclick=()=>openMask('loginMask');
+document.getElementById('btnAdmin').onclick=()=>{
+  const has=!!getToken();
+  const th=document.getElementById('tokenHint');
+  if(th) th.textContent = has? '✅ 已保存令牌，可直接登录（留空即用已存令牌）。如需更换可重新粘贴。' : '首次需粘贴一次，之后仅存本机浏览器，无需再填。访客无需填写。';
+  const ti=document.getElementById('tokenInput'); if(ti) ti.placeholder = has ? '（已保存，无需再填）' : 'ghp_ 开头，用于保存数据到云端';
+  openMask('loginMask');
+};
 document.getElementById('btnRefresh').onclick=async ()=>{ toast('刷新中…'); await Store.load(); renderAll(); if(document.getElementById('adminMask').classList.contains('show')){ renderPlayerList(); renderRuleList(); renderAdminGameList(); } toast('已刷新'); };
 document.querySelectorAll('[data-close]').forEach(el=> el.onclick=e=> e.target.closest('.mask').classList.remove('show'));
-document.getElementById('btnLogin').onclick=()=>{ const pw=document.getElementById('pwInput').value; if(pw===ADMIN_PW){ closeMask('loginMask'); document.getElementById('pwInput').value=''; openAdmin(); } else toast('密码错误'); };
+document.getElementById('btnLogin').onclick=async ()=>{
+  const pw=document.getElementById('pwInput').value;
+  if(pw!==ADMIN_PW){ toast('密码错误'); return; }
+  const typed=(document.getElementById('tokenInput').value||'').trim();
+  if(typed) setToken(typed);
+  if(!getToken()){ toast('请粘贴一次 GitHub 令牌以便保存数据'); return; }
+  // 校验 token 是否能访问该仓库
+  toast('校验令牌中…');
+  try{
+    const res=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`, { headers:{'Authorization':'token '+getToken(),'Accept':'application/vnd.github+json'} });
+    if(!res.ok){ setToken(''); toast('令牌无效或无仓库权限，请重新生成'); return; }
+  }catch(e){ toast('网络异常，稍后重试'); return; }
+  closeMask('loginMask');
+  document.getElementById('pwInput').value=''; document.getElementById('tokenInput').value='';
+  openAdmin();
+};
 document.getElementById('pwInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btnLogin').click(); });
 function openAdmin(){ openMask('adminMask'); Store.load().then(()=>{ renderPlayerList(); renderRuleList(); renderAdminGameList(); renderAll(); }); renderPlayerList(); renderRuleList(); renderAdminGameList(); renderIconPicker(); }
 
