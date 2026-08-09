@@ -36,12 +36,6 @@
       "color": "#ff7ac0"
     }
   ],
-  "rules": [
-    {
-      "id": "r2",
-      "name": "惩罚局",
-      "icon": "💣"
-    }
-  ],
+  "rules": [],
   "games": []
 }
