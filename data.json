@@ -1,16 +1,65 @@
 {
   "players": [
-    {"id":"p1","name":"信哥","color":"#f0d67a"},
-    {"id":"p2","name":"bobo","color":"#ff6b78"},
-    {"id":"p3","name":"AU","color":"#34c98a"},
-    {"id":"p4","name":"KK","color":"#ff9e40"},
-    {"id":"p5","name":"大晟","color":"#a98bff"},
-    {"id":"p6","name":"鸡翅","color":"#38d0d0"},
-    {"id":"p7","name":"wmh","color":"#ff7ac0"}
+    {
+      "id": "p1",
+      "name": "信哥",
+      "color": "#f0d67a"
+    },
+    {
+      "id": "p2",
+      "name": "bobo",
+      "color": "#ff6b78"
+    },
+    {
+      "id": "p3",
+      "name": "AU",
+      "color": "#34c98a"
+    },
+    {
+      "id": "p4",
+      "name": "KK",
+      "color": "#ff9e40"
+    },
+    {
+      "id": "p5",
+      "name": "大晟",
+      "color": "#a98bff"
+    },
+    {
+      "id": "p6",
+      "name": "鸡翅",
+      "color": "#38d0d0"
+    },
+    {
+      "id": "p7",
+      "name": "wmh",
+      "color": "#ff7ac0"
+    }
   ],
   "rules": [
-    {"id":"r1","name":"翻倍局","icon":"🔥"},
-    {"id":"r2","name":"惩罚局","icon":"💣"}
+    {
+      "id": "r1",
+      "name": "翻倍局",
+      "icon": "🔥"
+    },
+    {
+      "id": "r2",
+      "name": "惩罚局",
+      "icon": "💣"
+    }
   ],
-  "games": []
+  "games": [
+    {
+      "id": "gTEST",
+      "date": "2026-08-02",
+      "ruleIds": [
+        "r1"
+      ],
+      "scores": {
+        "p1": 10,
+        "p2": -5,
+        "p3": -5
+      }
+    }
+  ]
 }
