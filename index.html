@@ -175,6 +175,7 @@
   .pchip:not(.off){ border-color:rgba(212,175,55,.45);}
   .fbtn{ padding:5px 11px; border-radius:8px; border:1px solid var(--accent); background:transparent; color:var(--accent-soft); cursor:pointer; font-size:12px; font-weight:700;}
   .fbtn:hover{ background:rgba(212,175,55,.15);}
+  .h2-actions{ display:inline-flex; gap:6px; margin-left:6px; letter-spacing:0;}
   .rank-table th.sortable{ cursor:pointer; user-select:none; white-space:nowrap;}
   .rank-table th.sortable:hover{ color:#fff3c4;}
   .rank-table th.sorted{ color:#fff3c4; background:rgba(212,175,55,.16);}
@@ -218,7 +219,7 @@
 
   <!-- 1. 总积分变化趋势 -->
   <div class="card">
-    <h2><span class="bar"></span>总积分变化趋势</h2>
+    <h2><span class="bar"></span>总积分变化趋势<span class="h2-actions" id="chartBulk"><button class="fbtn" id="fAll">全选</button><button class="fbtn" id="fNone">全不选</button></span></h2>
     <div class="filter-bar" id="chartFilter"></div>
     <div class="chart-box" id="chartBox"><canvas id="trendChart"></canvas></div>
     <div class="hint" id="ruleLegend"></div>
@@ -653,9 +654,9 @@ function ruleNamesOf(g){ return (g.ruleIds||[]).map(id=>{ const r=Store.ruleById
 
 function renderChartFilter(players){
   const box=document.getElementById('chartFilter');
+  document.getElementById('chartBulk').style.display = players.length ? '' : 'none';
   if(!players.length){ box.innerHTML=''; return; }
-  box.innerHTML=`<button class="fbtn" id="fAll">全选</button><button class="fbtn" id="fNone">全不选</button>`+
-    players.map(p=>`<span class="pchip ${hiddenPlayers.has(p.id)?'off':''}" data-fp="${p.id}"><span class="d" style="background:${p.color}"></span>${escapeHtml(p.name)}</span>`).join('');
+  box.innerHTML=players.map(p=>`<span class="pchip ${hiddenPlayers.has(p.id)?'off':''}" data-fp="${p.id}"><span class="d" style="background:${p.color}"></span>${escapeHtml(p.name)}</span>`).join('');
   document.getElementById('fAll').onclick=()=>{ hiddenPlayers.clear(); applyChartVisibility(players); };
   document.getElementById('fNone').onclick=()=>{ players.forEach(p=>hiddenPlayers.add(p.id)); applyChartVisibility(players); };
   box.querySelectorAll('[data-fp]').forEach(el=> el.onclick=()=>{
